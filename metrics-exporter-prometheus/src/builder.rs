@@ -22,6 +22,7 @@ use hyper::{
     Response, StatusCode,
 };
 
+use hyper::http::uri::Scheme;
 #[cfg(feature = "push-gateway")]
 use hyper::{
     body::{aggregate, Buf},
@@ -29,6 +30,7 @@ use hyper::{
     http::HeaderValue,
     Method, Request, Uri,
 };
+use hyper_rustls::{ConfigBuilderExt, HttpsConnector, HttpsConnectorBuilder};
 
 use indexmap::IndexMap;
 #[cfg(feature = "http-listener")]
@@ -460,7 +462,16 @@ impl PrometheusBuilder {
             #[cfg(feature = "push-gateway")]
             ExporterConfig::PushGateway { endpoint, interval, username, password } => {
                 let exporter = async move {
-                    let client = Client::new();
+                    let tls_config = rustls::ClientConfig::builder()
+                        .with_safe_defaults()
+                        .with_native_roots()
+                        .with_no_client_auth();
+                    let https = HttpsConnectorBuilder::new()
+                        .with_tls_config(tls_config)
+                        .https_or_http()
+                        .enable_http1()
+                        .build();
+                    let client = Client::builder().build(https);
                     let auth = username
                         .as_ref()
                         .map(|name| basic_auth(name, password.as_ref().map(|x| &**x)));
