@@ -22,7 +22,6 @@ use hyper::{
     Response, StatusCode,
 };
 
-use hyper::http::uri::Scheme;
 #[cfg(feature = "push-gateway")]
 use hyper::{
     body::{aggregate, Buf},
@@ -30,7 +29,8 @@ use hyper::{
     http::HeaderValue,
     Method, Request, Uri,
 };
-use hyper_rustls::{ConfigBuilderExt, HttpsConnector, HttpsConnectorBuilder};
+#[cfg(feature = "push-gateway")]
+use hyper_rustls::{ConfigBuilderExt, HttpsConnectorBuilder};
 
 use indexmap::IndexMap;
 #[cfg(feature = "http-listener")]
@@ -486,9 +486,11 @@ impl PrometheusBuilder {
                         }
 
                         let output = handle.render();
+                        let content_length = output.as_bytes().len();
                         let result = builder
                             .method(Method::PUT)
                             .uri(endpoint.clone())
+                            .header("content-length", content_length)
                             .body(Body::from(output));
                         let req = match result {
                             Ok(req) => req,
